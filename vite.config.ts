@@ -10,10 +10,14 @@ export default defineConfig({
   tanstackStart: {
     server: {
       entry: "server",
-      prerender: {
-        routes: ["/"],
-        crawlLinks: true,
-      },
+    },
+  },
+  // Pass Nitro config to force static output preset instead of cloudflare
+  nitro: {
+    preset: "github-pages",
+    prerender: {
+      routes: ["/"],
+      crawlLinks: true,
     },
   },
 });
