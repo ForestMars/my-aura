@@ -36,20 +36,35 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build project
-        env:
-          NITRO_PRESET: github-pages
         run: bun run build
 
-      - name: Verify static build output
+      - name: Generate static HTML entrypoint for GitHub Pages
         run: |
-          if [ -f ".output/public/index.html" ]; then
-            echo "Success: Nitro generated static index.html"
-            cp .output/public/index.html .output/public/404.html
-          else
-            echo "ERROR: index.html not found in .output/public!"
-            ls -la .output/public || ls -la .output
-            exit 1
-          fi
+          echo "Locating client assets in .output/public/assets..."
+          
+          JS_FILE=$(basename $(ls .output/public/assets/index-*.js | head -n 1))
+          CSS_FILE=$(basename $(ls .output/public/assets/styles-*.css | head -n 1))
+
+          echo "Found JS: $JS_FILE"
+          echo "Found CSS: $CSS_FILE"
+
+          cat <<EOF > .output/public/index.html
+          <!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>App</title>
+              <link rel="stylesheet" href="./assets/${CSS_FILE}" />
+            </head>
+            <body>
+              <script type="module" src="./assets/${JS_FILE}"></script>
+            </body>
+          </html>
+          EOF
+
+          # Enable client-side route fallback on refresh for GitHub Pages
+          cp .output/public/index.html .output/public/404.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

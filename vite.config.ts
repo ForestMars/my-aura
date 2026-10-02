@@ -8,16 +8,6 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
   tanstackStart: {
-    server: {
-      entry: "server",
-    },
-  },
-  // Pass Nitro config to force static output preset instead of cloudflare
-  nitro: {
-    preset: "github-pages",
-    prerender: {
-      routes: ["/"],
-      crawlLinks: true,
-    },
+    server: { entry: "server" },
   },
 });
