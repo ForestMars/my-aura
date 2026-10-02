@@ -36,39 +36,34 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build project
-        env:
-          NITRO_PRESET: github-pages
         run: bun run build
 
-      - name: Ensure static HTML entrypoint
+      - name: Prerender static index.html from server bundle
         run: |
           touch .output/public/.nojekyll
 
-          if [ -f ".output/public/index.html" ]; then
-            echo "Nitro successfully built index.html."
-          else
-            echo "Generating pre-rendered root HTML from Nitro server output..."
-            # Run the compiled Nitro server in the background to render the root path
-            bun .output/server/index.mjs &
-            SERVER_PID=$!
-            
-            # Wait for server startup
-            sleep 2
-            
-            # Fetch rendered HTML from the local SSR server
-            curl -s http://localhost:3000/ > .output/public/index.html || true
-            
-            # Stop the background server
-            kill $SERVER_PID || true
+          # Execute the built Nitro server locally using Bun
+          bun .output/server/index.mjs &
+          SERVER_PID=$!
 
-            # Fallback check
-            if [ ! -s ".output/public/index.html" ]; then
-              echo "ERROR: Failed to capture pre-rendered HTML from local SSR server."
-              exit 1
-            fi
+          # Wait for local server spin-up
+          sleep 3
+
+          # Scrap the rendered root page directly from the SSR engine
+          curl -s http://localhost:3000/ > .output/public/index.html || curl -s http://127.0.0.1:3000/ > .output/public/index.html
+
+          # Kill local server process
+          kill $SERVER_PID || true
+
+          if [ ! -s ".output/public/index.html" ]; then
+            echo "ERROR: Could not capture HTML from local SSR server."
+            exit 1
           fi
 
-          # Copy root HTML to 404.html for GitHub Pages client-side route fallback
+          echo "Successfully captured SSR HTML:"
+          head -n 20 .output/public/index.html
+
+          # Set up 404 fallback for SPA routing on GitHub Pages
           cp .output/public/index.html .output/public/404.html
 
       - name: Upload artifact
