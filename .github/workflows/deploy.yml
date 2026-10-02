@@ -36,23 +36,41 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build project
-        env:
-          NITRO_PRESET: static
         run: bun run build
 
-      - name: Configure GitHub Pages static output
+      - name: Generate SPA index.html for GitHub Pages
         run: |
-          # Prevent GitHub Pages from treating folder as Jekyll site
-          touch .output/public/.nojekyll
+          echo "Building static entrypoint from compiled assets..."
+          
+          JS_FILE=$(basename $(ls .output/public/assets/index-*.js | head -n 1))
+          CSS_FILE=$(basename $(ls .output/public/assets/styles-*.css | head -n 1))
+          ROUTES_FILE=$(basename $(ls .output/public/assets/routes-*.js 2>/dev/null | head -n 1 || true))
 
-          if [ -f ".output/public/index.html" ]; then
-            echo "Success: Nitro generated static index.html"
-            cp .output/public/index.html .output/public/404.html
-          else
-            echo "ERROR: index.html not found in .output/public!"
-            ls -la .output/public || ls -la .output
-            exit 1
+          ROUTES_SCRIPT=""
+          if [ -n "$ROUTES_FILE" ]; then
+            ROUTES_SCRIPT="<script type=\"module\" src=\"./assets/${ROUTES_FILE}\"></script>"
           fi
+
+          cat <<EOF > .output/public/index.html
+          <!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>App</title>
+              <link rel="stylesheet" href="./assets/${CSS_FILE}" />
+            </head>
+            <body>
+              <div id="app"></div>
+              ${ROUTES_SCRIPT}
+              <script type="module" src="./assets/${JS_FILE}"></script>
+            </body>
+          </html>
+          EOF
+
+          # Enable client routing on refresh & prevent Jekyll build ignoring asset folders
+          cp .output/public/index.html .output/public/404.html
+          touch .output/public/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
