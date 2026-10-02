@@ -38,10 +38,26 @@ jobs:
       - name: Build project
         run: bun run build
 
+      - name: Find index.html location
+        id: locate-artifact
+        run: |
+          echo "=== Searching for index.html inside .output ==="
+          INDEX_PATH=$(find .output -name "index.html" | head -n 1)
+          
+          if [ -n "$INDEX_PATH" ]; then
+            TARGET_DIR=$(dirname "$INDEX_PATH")
+            echo "Found index.html in: $TARGET_DIR"
+            echo "path=$TARGET_DIR" >> $GITHUB_OUTPUT
+          else
+            echo "ERROR: index.html was not found anywhere inside .output!"
+            find .output
+            exit 1
+          fi
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './.output/public' # Change to './.output' if static files are not in /public
+          path: ${{ steps.locate-artifact.outputs.path }}
 
       - name: Deploy to GitHub Pages
         id: deployment
